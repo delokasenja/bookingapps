@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Select-Object FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem \"F:\\\\ai-codex\\\\Deloka\" -Recurse -Depth 3 | Where-Object { !$_.PSIsContainer } | Select-Object FullName)",
+      "PowerShell(New-Item -ItemType Directory -Path \"F:\\\\ai-codex\\\\Deloka\\\\src\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Path \"F:\\\\ai-codex\\\\Deloka\\\\public\" -Force)",
+      "Read(//mnt/f/ai-codex/**)",
+      "Bash(npm install *)",
+      "Bash(ls /mnt/)",
+      "Read(//mnt/**)"
+    ]
+  }
+}
