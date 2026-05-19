@@ -4,11 +4,246 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Deloka Senja - Sistem Tempahan Homestay Premium" />
-    <meta name="theme-color" content="#059669" />
+    <meta name="description" content="Deloka Senja - Homestay Moden Bali, Sungai Petani" />
+    <meta name="theme-color" content="#C4760A" />
     <title>Deloka Senja - Homestay Premium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Pacifico&display=swap" rel="stylesheet"/>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        background-color: #FAF7F2;
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      .brand-font {
+        font-family: 'Pacifico', cursive !important;
+        letter-spacing: 0.01em !important;
+        font-style: normal !important;
+      }
+      #root { min-height: 100vh; }
+
+      /* ═══════════════════════════════════
+         BALI VIBE LOADER
+      ═══════════════════════════════════ */
+      #app-loader {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background:
+          radial-gradient(ellipse 90% 80% at 50% 60%, #4A1E08 0%, #2A0D04 45%, #0D0502 100%);
+        z-index: 9999;
+        overflow: hidden;
+        transition: opacity 0.6s ease;
+      }
+
+      /* Central warm glow behind icon */
+      #app-loader::before {
+        content: '';
+        position: absolute;
+        width: 360px; height: 360px;
+        background: radial-gradient(circle, rgba(212,135,10,0.22) 0%, rgba(180,80,20,0.08) 50%, transparent 70%);
+        top: 50%; left: 50%;
+        transform: translate(-50%, -52%);
+        animation: glowPulse 3s ease-in-out infinite;
+        pointer-events: none;
+      }
+
+      /* Horizon glow at bottom */
+      #app-loader::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 180px;
+        background: linear-gradient(to top, rgba(180,70,10,0.18) 0%, transparent 100%);
+        pointer-events: none;
+      }
+
+      /* ── Floating particles (fireflies) ── */
+      .loader-star {
+        position: absolute;
+        width: 3px; height: 3px;
+        background: #D4870A;
+        border-radius: 50%;
+        box-shadow: 0 0 6px 2px rgba(212,135,10,0.5);
+        animation: starFloat linear infinite;
+        opacity: 0;
+      }
+
+      /* ── Card ── */
+      #app-loader .loader-card {
+        position: relative; z-index: 2;
+        display: flex; flex-direction: column; align-items: center;
+        text-align: center; padding: 0 32px;
+      }
+
+      /* ── Lotus icon ── */
+      #app-loader .loader-icon {
+        width: 88px; height: 88px;
+        background: linear-gradient(145deg, #C4760A 0%, #E8A020 50%, #C46010 100%);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 28px;
+        box-shadow:
+          0 0 0 8px rgba(196,118,10,0.12),
+          0 0 0 16px rgba(196,118,10,0.06),
+          0 12px 40px rgba(0,0,0,0.45);
+        animation: iconPulse 2.8s ease-in-out infinite;
+      }
+
+      #app-loader .loader-icon svg {
+        width: 48px; height: 48px;
+      }
+
+      /* ── Brand name ── */
+      #app-loader .loader-name {
+        font-family: 'Pacifico', cursive;
+        font-size: 40px;
+        color: #F5E6C8;
+        letter-spacing: 0.01em;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 24px rgba(212,135,10,0.45), 0 0 60px rgba(180,80,10,0.3);
+        animation: fadeSlideUp 0.7s ease both;
+      }
+
+      /* ── Tagline ── */
+      #app-loader .loader-tagline {
+        font-size: 10px; font-weight: 600;
+        color: #C4986A;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 40px;
+        animation: fadeSlideUp 0.7s 0.12s ease both;
+      }
+
+      /* ── Animated dots ── */
+      #app-loader .loader-dots {
+        display: flex; gap: 10px;
+        animation: fadeSlideUp 0.7s 0.22s ease both;
+        margin-bottom: 18px;
+      }
+
+      #app-loader .loader-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        animation: dotBounce 1.4s ease-in-out infinite;
+      }
+      #app-loader .loader-dot:nth-child(1) { background:#E8A020; animation-delay:0s; }
+      #app-loader .loader-dot:nth-child(2) { background:#C4760A; animation-delay:0.18s; }
+      #app-loader .loader-dot:nth-child(3) { background:#A85010; animation-delay:0.36s; }
+
+      /* ── Loading text ── */
+      #app-loader .loader-tip {
+        font-size: 10px; color: #8A6A4A; font-weight: 500;
+        letter-spacing: 0.08em; text-transform: uppercase;
+        animation: fadeSlideUp 0.7s 0.32s ease both;
+      }
+
+      /* ── Decorative Bali pattern border (top & bottom) ── */
+      #app-loader .loader-ornament {
+        position: absolute; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg,
+          transparent 0%,
+          rgba(196,118,10,0.3) 15%,
+          rgba(232,160,32,0.7) 35%,
+          rgba(196,118,10,0.9) 50%,
+          rgba(232,160,32,0.7) 65%,
+          rgba(196,118,10,0.3) 85%,
+          transparent 100%
+        );
+      }
+      #app-loader .loader-ornament-top { top: 0; }
+      #app-loader .loader-ornament-bot { bottom: 0; }
+
+      /* ═══════════ KEYFRAMES ═══════════ */
+      @keyframes glowPulse {
+        0%, 100% { opacity: 0.7; transform: translate(-50%,-52%) scale(1); }
+        50%       { opacity: 1;   transform: translate(-50%,-52%) scale(1.25); }
+      }
+      @keyframes iconPulse {
+        0%, 100% {
+          transform: scale(1) translateY(0);
+          box-shadow: 0 0 0 8px rgba(196,118,10,0.12), 0 0 0 16px rgba(196,118,10,0.06), 0 12px 40px rgba(0,0,0,0.45);
+        }
+        50% {
+          transform: scale(1.06) translateY(-3px);
+          box-shadow: 0 0 0 10px rgba(196,118,10,0.18), 0 0 0 22px rgba(196,118,10,0.08), 0 16px 50px rgba(0,0,0,0.5);
+        }
+      }
+      @keyframes dotBounce {
+        0%, 80%, 100% { transform: scale(1);   opacity: 0.5; }
+        40%            { transform: scale(1.5); opacity: 1;   }
+      }
+      @keyframes starFloat {
+        0%   { opacity: 0;   transform: translateY(0)     scale(0.5); }
+        20%  { opacity: 0.9; transform: translateY(-18px) scale(1);   }
+        80%  { opacity: 0.4; transform: translateY(-70px) scale(0.8); }
+        100% { opacity: 0;   transform: translateY(-110px) scale(0);  }
+      }
+      @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: none; }
+      }
+    </style>
   </head>
   <body>
+    <div id="app-loader">
+
+      <!-- Golden ornament lines -->
+      <div class="loader-ornament loader-ornament-top"></div>
+      <div class="loader-ornament loader-ornament-bot"></div>
+
+      <!-- Floating firefly particles -->
+      <span class="loader-star" style="left:10%;bottom:20%;animation-duration:4.0s;animation-delay:0.0s;width:2px;height:2px"></span>
+      <span class="loader-star" style="left:22%;bottom:35%;animation-duration:5.2s;animation-delay:0.8s"></span>
+      <span class="loader-star" style="left:38%;bottom:15%;animation-duration:3.8s;animation-delay:1.6s;width:2px;height:2px"></span>
+      <span class="loader-star" style="left:55%;bottom:28%;animation-duration:4.6s;animation-delay:0.4s"></span>
+      <span class="loader-star" style="left:68%;bottom:18%;animation-duration:5.0s;animation-delay:1.2s;width:4px;height:4px"></span>
+      <span class="loader-star" style="left:80%;bottom:40%;animation-duration:3.5s;animation-delay:2.0s;width:2px;height:2px"></span>
+      <span class="loader-star" style="left:90%;bottom:25%;animation-duration:4.8s;animation-delay:0.6s"></span>
+      <span class="loader-star" style="left:5%; bottom:55%;animation-duration:6.0s;animation-delay:1.8s;width:2px;height:2px"></span>
+      <span class="loader-star" style="left:95%;bottom:60%;animation-duration:4.2s;animation-delay:3.0s;width:2px;height:2px"></span>
+
+      <!-- Main card -->
+      <div class="loader-card">
+
+        <!-- Lotus icon -->
+        <div class="loader-icon">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Centre petal -->
+            <path d="M24 40 C24 32 21 26 21 19 C21 12 22.5 7 24 7 C25.5 7 27 12 27 19 C27 26 24 32 24 40Z" fill="white"/>
+            <!-- Left inner petal -->
+            <path d="M24 34 C17 33 11 28 9 21 C12 16 17 16 19 20 C21 24 22 28 24 34Z" fill="white"/>
+            <!-- Left outer petal -->
+            <path d="M24 33 C16 28 13 20 15 13 C10 13 7 18 8 23 C9 29 16 33 24 33Z" fill="white" opacity="0.65"/>
+            <!-- Right inner petal -->
+            <path d="M24 34 C31 33 37 28 39 21 C36 16 31 16 29 20 C27 24 26 28 24 34Z" fill="white"/>
+            <!-- Right outer petal -->
+            <path d="M24 33 C32 28 35 20 33 13 C38 13 41 18 40 23 C39 29 32 33 24 33Z" fill="white" opacity="0.65"/>
+            <!-- Water base -->
+            <ellipse cx="24" cy="42" rx="9" ry="2.5" fill="white" opacity="0.3"/>
+          </svg>
+        </div>
+
+        <div class="loader-name">Deloka Senja</div>
+        <div class="loader-tagline">Konsep Moden Bali &nbsp;•&nbsp; Sungai Petani, Kedah</div>
+
+        <!-- 3 bouncing dots -->
+        <div class="loader-dots">
+          <div class="loader-dot"></div>
+          <div class="loader-dot"></div>
+          <div class="loader-dot"></div>
+        </div>
+
+        <div class="loader-tip">Memuatkan&hellip;</div>
+      </div>
+
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
