@@ -536,38 +536,40 @@ const PaymentInfoCard = ({ homepage, label, amount, headerColor = 'bg-blue-600',
           <span className="text-base font-black text-white tracking-wide">{amount}</span>
         </div>
         <div className="p-4 space-y-3">
-          {/* Bank details row */}
-          <div className="flex items-center justify-between bg-gray-50 rounded-[12px] px-3 py-2.5">
-            <div>
-              <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">{homepage?.bank_name || 'Bank'}</p>
-              <p className="text-[10px] text-gray-500 font-medium mt-0.5">{homepage?.bank_holder || '—'}</p>
+          {/* 2-col: left = bank info + account, right = QR */}
+          <div className={`grid gap-3 items-start ${homepage?.bank_qr ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {/* Left column */}
+            <div className="space-y-2">
+              <div className="bg-gray-50 rounded-[12px] px-3 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">{homepage?.bank_name || 'Bank'}</p>
+                  <p className="text-[10px] text-gray-600 font-bold mt-0.5">{homepage?.bank_holder || '—'}</p>
+                </div>
+                <Receipt className="w-3.5 h-3.5 text-gray-300 shrink-0"/>
+              </div>
+              {homepage?.bank_account && (
+                <div className="border-2 border-dashed border-gray-200 rounded-[12px] px-3 py-3">
+                  <p className="text-[8px] text-gray-400 font-semibold uppercase tracking-widest mb-1">No. Akaun</p>
+                  <p className="text-sm font-black text-gray-900 tracking-[0.1em] select-all leading-snug break-all">{homepage.bank_account}</p>
+                </div>
+              )}
             </div>
-            <Receipt className="w-4 h-4 text-gray-300"/>
+            {/* Right column — QR */}
+            {homepage?.bank_qr && (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center justify-between w-full">
+                  <p className="text-[8px] text-gray-400 font-semibold uppercase tracking-widest">QR Bayar</p>
+                  <button onClick={()=>setQrFull(true)} className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full transition-colors">
+                    <Eye className="w-2.5 h-2.5"/> Full
+                  </button>
+                </div>
+                <div className="border border-gray-200 rounded-[12px] overflow-hidden p-1.5 bg-white w-full cursor-pointer hover:border-blue-300 transition-colors" onClick={()=>setQrFull(true)}>
+                  <img src={homepage.bank_qr} alt="QR Bayaran" className="w-full h-auto object-contain max-h-28"/>
+                </div>
+              </div>
+            )}
           </div>
-          {/* Account number */}
-          {homepage?.bank_account && (
-            <div className="border-2 border-dashed border-gray-200 rounded-[12px] px-4 py-3 text-center">
-              <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-widest mb-1">No. Akaun</p>
-              <p className="text-lg font-black text-gray-900 tracking-[0.12em] select-all">{homepage.bank_account}</p>
-            </div>
-          )}
-          {/* QR Code */}
-          {homepage?.bank_qr && (
-            <div className="flex flex-col items-center gap-2 pt-1">
-              <div className="flex items-center justify-between w-full">
-                <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-widest">Imbas QR untuk Bayar</p>
-                <button
-                  onClick={()=>setQrFull(true)}
-                  className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors">
-                  <Eye className="w-3 h-3"/> Full View
-                </button>
-              </div>
-              <div className="border border-gray-200 rounded-[12px] overflow-hidden p-2 bg-white cursor-pointer hover:border-blue-300 transition-colors" onClick={()=>setQrFull(true)}>
-                <img src={homepage.bank_qr} alt="QR Bayaran" className="w-36 h-36 object-contain"/>
-              </div>
-            </div>
-          )}
-          {/* Tip */}
+          {/* Tip — full width */}
           {tip && (
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-[12px] px-3 py-2">
               <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5"/>
@@ -2205,11 +2207,10 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
       </nav>
 
       {/* Mobile Top Controls */}
-      <div className="md:hidden absolute top-0 w-full p-5 flex justify-between z-20 pointer-events-none">
-        <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white pointer-events-auto shadow-sm"><ArrowLeft className="w-5 h-5"/></div>
+      <div className="md:hidden absolute top-0 w-full p-4 flex justify-end z-20 pointer-events-none">
         <div className="flex gap-2 pointer-events-auto">
-          <button onClick={()=>setRoute('admin-login')} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm"><Settings className="w-5 h-5"/></button>
-          <button onClick={toggleDark} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm">{isDark?<Sun className="w-5 h-5"/>:<Moon className="w-5 h-5"/>}</button>
+          <button onClick={()=>setRoute('admin-login')} className="w-9 h-9 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm"><Settings className="w-4 h-4"/></button>
+          <button onClick={toggleDark} className="w-9 h-9 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm">{isDark?<Sun className="w-4 h-4"/>:<Moon className="w-4 h-4"/>}</button>
         </div>
       </div>
 
@@ -2218,16 +2219,23 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
 
           {/* Mobile Gallery with dots */}
           <div className="md:hidden relative">
-            <div ref={galleryScrollRef} className="h-[52vh] w-full flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-stone-300">
+            <div ref={galleryScrollRef} className="h-[52vh] w-full flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-stone-900">
               {gallery.map((img,i) => (
-                <img key={i} src={img} onClick={()=>setLightboxIdx(i)}
-                  className="w-full h-full object-cover snap-center shrink-0 cursor-zoom-in" alt={`Gambar ${i+1}`}/>
+                <div key={i} className="w-full h-full shrink-0 snap-center relative">
+                  {/* shimmer placeholder */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-stone-800 via-stone-700 to-stone-800 animate-pulse"/>
+                  <img src={img} onClick={()=>setLightboxIdx(i)}
+                    className="w-full h-full object-cover cursor-zoom-in relative z-10"
+                    alt={`Gambar ${i+1}`}
+                    onLoad={e=>e.currentTarget.previousSibling.style.display='none'}/>
+                </div>
               ))}
             </div>
             {/* Top gradient + brand name */}
-            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/50 to-transparent pointer-events-none"/>
-            <div className="absolute top-14 left-5 z-10">
-              <span className="brand-font text-3xl text-white drop-shadow-lg" style={BRAND_FONT}>{homepage.homestay_name}</span>
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"/>
+            <div className="absolute bottom-10 left-5 z-10">
+              <span className="brand-font text-4xl text-white drop-shadow-lg" style={BRAND_FONT}>{homepage.homestay_name}</span>
+              <p className="text-white/70 text-xs font-medium mt-0.5 drop-shadow">{homepage.tagline}</p>
             </div>
             {/* Camera hint */}
             <button onClick={()=>setLightboxIdx(galleryIndex)} className="absolute top-3 right-3 z-10 w-8 h-8 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center transition-colors">
@@ -2245,7 +2253,14 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
           <div className="hidden md:block">
             <div className="w-full h-[400px] xl:h-[450px] rounded-[32px] overflow-hidden mb-4 bg-stone-200 shadow-sm border border-gray-100 relative group cursor-zoom-in"
               onClick={()=>setLightboxIdx(selectedGalleryImg)}>
-              <img src={gallery[selectedGalleryImg]||gallery[0]} className="w-full h-full object-cover transition-opacity duration-500" alt="Main"/>
+              {/* shimmer */}
+              <div className="absolute inset-0 bg-gradient-to-r from-stone-200 via-stone-100 to-stone-200 animate-pulse rounded-[32px]"/>
+              <img src={gallery[selectedGalleryImg]||gallery[0]}
+                className="w-full h-full object-cover transition-opacity duration-500 relative z-10"
+                alt="Main"
+                onLoad={e=>{e.currentTarget.style.opacity='1'; e.currentTarget.previousSibling.style.display='none';}}
+                style={{opacity:0}}
+                key={selectedGalleryImg}/>
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                 <div className="w-10 h-10 bg-black/0 group-hover:bg-black/40 rounded-full flex items-center justify-center transition-all scale-0 group-hover:scale-100">
                   <Camera className="w-5 h-5 text-white"/>
@@ -2254,8 +2269,10 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
             </div>
             <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
               {gallery.map((img,i) => (
-                <button key={i} onClick={()=>setSelectedGalleryImg(i)} onDoubleClick={()=>setLightboxIdx(i)} className={`shrink-0 w-32 h-[84px] rounded-[20px] overflow-hidden transition-all duration-300 ${selectedGalleryImg===i?'border-[3px] border-emerald-500 shadow-md scale-105':'border-[3px] border-transparent opacity-60 hover:opacity-100'}`}>
-                  <img src={img} className="w-full h-full object-cover" alt={`Thumb ${i+1}`}/>
+                <button key={i} onClick={()=>setSelectedGalleryImg(i)} onDoubleClick={()=>setLightboxIdx(i)} className={`shrink-0 w-32 h-[84px] rounded-[20px] overflow-hidden transition-all duration-300 relative bg-stone-200 ${selectedGalleryImg===i?'border-[3px] border-emerald-500 shadow-md scale-105':'border-[3px] border-transparent opacity-60 hover:opacity-100'}`}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-stone-200 via-stone-100 to-stone-200 animate-pulse"/>
+                  <img src={img} className="w-full h-full object-cover relative z-10" alt={`Thumb ${i+1}`}
+                    onLoad={e=>{e.currentTarget.previousSibling.style.display='none';}}/>
                 </button>
               ))}
             </div>
