@@ -2664,6 +2664,8 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
   // Persisted form refs — survive sub-component remounts caused by dispatch
   const waFormRef = useRef(null);
   const hpFormRef = useRef(null);
+  const emailjsFormRef = useRef(null);
+  const pricingFormRef = useRef(null);
   // Cleaner modal state lifted to AdminView so it survives AdminCleaner remounts
   const [cleanerViewReport, setCleanerViewReport] = useState(null);
   const cleanerUpahRef = useRef('');
@@ -3420,8 +3422,9 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
     );
   };
 
-  const AdminFormConfig = ({ title, data, actionType, icon: Icon, desc }) => {
-    const [form, setForm] = useState(data);
+  const AdminFormConfig = ({ title, data, actionType, icon: Icon, desc, formRef }) => {
+    const [form, setFormState] = useState(() => (formRef?.current) || data);
+    const setForm = v => { if (formRef) formRef.current = v; setFormState(v); };
     return (
       <div className="animate-fade-in space-y-6 max-w-4xl">
         <h2 className="text-2xl font-bold flex items-center gap-2">{Icon&&<Icon className="w-6 h-6 text-emerald-600"/>} {title}</h2>
@@ -3670,14 +3673,15 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
 
   // ── EmailJS Config ──────────────────────────────
   const AdminEmailJS = () => {
-    const [form, setForm] = useState(() => ({
+    const [form, setFormState] = useState(() => emailjsFormRef.current || {
       service_id: '',
       admin_template_id: '',
       customer_template_id: '',
       public_key: '',
       admin_email: '',
       ...state.emailjs_config,
-    }));
+    });
+    const setForm = v => { emailjsFormRef.current = v; setFormState(v); };
     const [testing, setTesting] = useState(null); // 'admin'|'customer'|null
     const [testMsg, setTestMsg] = useState(null);
 
@@ -4376,7 +4380,7 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
       case 'dashboard': return <AdminDashboard/>;
       case 'bookings': return <AdminBookings/>;
       case 'special': return <AdminSpecialDates/>;
-      case 'pricing': return <AdminFormConfig title="Tetapan Harga" data={state.pricing} actionType="UPDATE_PRICING" icon={CreditCard}/>;
+      case 'pricing': return <AdminFormConfig title="Tetapan Harga" data={state.pricing} actionType="UPDATE_PRICING" icon={CreditCard} formRef={pricingFormRef}/>;
       case 'gallery': return <AdminGallery/>;
       case 'homepage': return <AdminHomepage/>;
       case 'templates': return <AdminWATemplates/>;
