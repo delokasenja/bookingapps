@@ -2020,6 +2020,7 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyInitialId, setHistoryInitialId] = useState('');
+  const [pendingBooking, setPendingBooking] = useState(null); // booking summary before confirm
   const [activeStep, setActiveStep] = useState(null);
   const bookingRef = useRef(null);
   const formRef = useRef(null);
@@ -2066,62 +2067,58 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
     return () => clearInterval(t);
   }, [galleryIndex, gallery.length]);
 
+  // Step 1 — validate & show summary
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!checkIn||!checkOut||!guestName||!guestPhone) return setToast({type:'error',message:'Sila lengkapkan borang.'});
     if (checkIn >= checkOut) return setToast({type:'error',message:'Tarikh keluar mesti selepas tarikh masuk.'});
     if (!priceCalc) return setToast({type:'error',message:'Ralat pengiraan harga. Sila pilih tarikh semula.'});
     if (checkOverlap(checkIn,checkOut,bookings,special_dates)) return setToast({type:'error',message:'Tarikh telah ditempah atau ditutup.'});
+    setPendingBooking({ checkIn, checkOut, guestName, guestPhone, guestEmail, guests, priceCalc });
+  };
+
+  // Step 2 — actually create booking after user confirms
+  const handleConfirmBooking = () => {
+    if (!pendingBooking) return;
+    const { checkIn:ci, checkOut:co, guestName:gn, guestPhone:gp, guestEmail:ge, guests:g, priceCalc:pc } = pendingBooking;
     const bkNum = Math.floor(Math.random()*90000)+10000;
     const bkId = `BK${bkNum}`;
     const holdUntil = new Date(Date.now()+6*3600000).toISOString();
     const newBk = {
-      id: bkId,
-      invoice_id: `DELOKA-INV-${bkNum}`,
-      guest_name: guestName, guest_phone: guestPhone, guest_email: guestEmail, guest_ic: '',
-      check_in: checkIn, check_out: checkOut,
-      guests: Number(guests), total_nights: priceCalc.totalNights,
-      total_price: priceCalc.grandTotal, payment_received: 0,
+      id: bkId, invoice_id: `DELOKA-INV-${bkNum}`,
+      guest_name: gn, guest_phone: gp, guest_email: ge, guest_ic: '',
+      check_in: ci, check_out: co,
+      guests: Number(g), total_nights: pc.totalNights,
+      total_price: pc.grandTotal, payment_received: 0,
       admin_notes: '', status: 'hold',
       hold_until: holdUntil, agreed_terms: false,
       created_at: new Date().toISOString()
     };
     dispatch({type:'ADD_BOOKING', payload:newBk});
     const waMsg = renderWATemplate(state.wa_templates?.new_booking, {
-      homestay_name: homepage.homestay_name, nama: guestName, telefon: guestPhone,
-      inv: `DELOKA-INV-${bkNum}`, masuk: formatDate(checkIn), keluar: formatDate(checkOut),
-      malam: priceCalc.totalNights, tetamu: guests,
-      jumlah: priceCalc.grandTotal.toFixed(0), deposit: priceCalc.deposit.toFixed(0),
+      homestay_name: homepage.homestay_name, nama: gn, telefon: gp,
+      inv: `DELOKA-INV-${bkNum}`, masuk: formatDate(ci), keluar: formatDate(co),
+      malam: pc.totalNights, tetamu: g,
+      jumlah: pc.grandTotal.toFixed(0), deposit: pc.deposit.toFixed(0),
     });
     window.open(`https://wa.me/${homepage.whatsapp_number}?text=${encodeURIComponent(waMsg)}`, '_blank');
-    // ── Send email notifications via EmailJS ──
+    // Email notifications via EmailJS
     const ej = state.emailjs_config;
     if (ej?.public_key && ej?.service_id) {
       const commonParams = {
-        homestay_name: homepage.homestay_name,
-        invoice_id:    `DELOKA-INV-${bkNum}`,
-        guest_name:    guestName,
-        guest_phone:   guestPhone,
-        check_in:      formatDate(checkIn),
-        check_out:     formatDate(checkOut),
-        total_nights:  String(priceCalc.totalNights),
-        guests:        String(guests),
-        total_price:   formatCurrency(priceCalc.grandTotal),
-        deposit:       formatCurrency(priceCalc.deposit),
-        hold_until:    new Date(holdUntil).toLocaleString('ms-MY'),
-        status:        'Menunggu Deposit',
+        homestay_name: homepage.homestay_name, invoice_id: `DELOKA-INV-${bkNum}`,
+        guest_name: gn, guest_phone: gp,
+        check_in: formatDate(ci), check_out: formatDate(co),
+        total_nights: String(pc.totalNights), guests: String(g),
+        total_price: formatCurrency(pc.grandTotal), deposit: formatCurrency(pc.deposit),
+        hold_until: new Date(holdUntil).toLocaleString('ms-MY'), status: 'Menunggu Deposit',
       };
-      // Admin notification
-      if (ej.admin_template_id && ej.admin_email) {
-        emailjs.send(ej.service_id, ej.admin_template_id, { ...commonParams, to_email: ej.admin_email }, { publicKey: ej.public_key })
-          .catch(() => {});
-      }
-      // Customer confirmation
-      if (ej.customer_template_id && guestEmail) {
-        emailjs.send(ej.service_id, ej.customer_template_id, { ...commonParams, to_email: guestEmail, to_name: guestName }, { publicKey: ej.public_key })
-          .catch(() => {});
-      }
+      if (ej.admin_template_id && ej.admin_email)
+        emailjs.send(ej.service_id, ej.admin_template_id, { ...commonParams, to_email: ej.admin_email }, { publicKey: ej.public_key }).catch(()=>{});
+      if (ej.customer_template_id && ge)
+        emailjs.send(ej.service_id, ej.customer_template_id, { ...commonParams, to_email: ge, to_name: gn }, { publicKey: ej.public_key }).catch(()=>{});
     }
+    setPendingBooking(null);
     setLastBookingId(bkId);
     setCheckIn(''); setCheckOut(''); setGuestName(''); setGuestPhone(''); setGuestEmail(''); setGuests(1);
     setShowWaNotice(true);
@@ -2133,46 +2130,93 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
       {showHistoryModal && <BookingHistoryModal bookings={bookings} homepage={homepage} onClose={()=>setShowHistoryModal(false)} onViewBooking={(id)=>{ setShowHistoryModal(false); setHistoryInitialId(id); setShowStatusModal(true); }}/>}
       {showRules && <RulesModal rules={rules} onClose={()=>setShowRules(false)}/>}
 
-      {/* WhatsApp Notice Modal */}
+      {/* ── Booking Summary Modal (step before confirm) ── */}
+      {pendingBooking && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full md:max-w-sm bg-white rounded-t-[28px] md:rounded-[28px] overflow-hidden animate-fade-in">
+            {/* Header */}
+            <div className="bg-gray-900 px-5 pt-5 pb-4">
+              <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-1">Semak Sebelum Hantar</p>
+              <h3 className="text-xl font-black text-white">Ringkasan Tempahan</h3>
+            </div>
+            {/* Details */}
+            <div className="px-5 py-4 space-y-2.5">
+              {[
+                { icon:'👤', label:'Nama',     value: pendingBooking.guestName },
+                { icon:'📱', label:'Telefon',  value: pendingBooking.guestPhone },
+                { icon:'✉️', label:'Emel',     value: pendingBooking.guestEmail || <span className="text-gray-400 italic text-xs">Tiada — notifikasi emel tidak akan dihantar</span> },
+                { icon:'📅', label:'Check-in', value: formatDate(pendingBooking.checkIn) },
+                { icon:'📅', label:'Check-out',value: formatDate(pendingBooking.checkOut) },
+                { icon:'🌙', label:'Tempoh',   value: `${pendingBooking.priceCalc.totalNights} malam · ${pendingBooking.guests} tetamu` },
+              ].map(({icon,label,value})=>(
+                <div key={label} className="flex items-start justify-between gap-3">
+                  <span className="text-xs text-gray-400 font-medium flex items-center gap-1.5 shrink-0"><span>{icon}</span>{label}</span>
+                  <span className="text-xs font-bold text-gray-900 text-right">{value}</span>
+                </div>
+              ))}
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">💰 Jumlah</span>
+                <span className="text-lg font-black text-emerald-600">{formatCurrency(pendingBooking.priceCalc.grandTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">💳 Deposit kini</span>
+                <span className="text-sm font-black text-amber-600">{formatCurrency(pendingBooking.priceCalc.deposit)}</span>
+              </div>
+              {/* Email warning */}
+              {!pendingBooking.guestEmail && state.emailjs_config?.public_key && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-[10px] px-3 py-2">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5"/>
+                  <p className="text-[10px] text-amber-700 font-medium">Tiada emel diisi — pengesahan emel tidak akan dihantar. Kembali untuk tambah emel jika perlu.</p>
+                </div>
+              )}
+            </div>
+            {/* Actions */}
+            <div className="px-5 pb-6 grid grid-cols-2 gap-3">
+              <button onClick={()=>setPendingBooking(null)}
+                className="py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-[14px] transition-colors text-sm flex items-center justify-center gap-2">
+                <ChevronLeft className="w-4 h-4"/> Edit
+              </button>
+              <button onClick={handleConfirmBooking}
+                className="py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-[14px] transition-colors text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-200">
+                <Send className="w-4 h-4"/> Hantar Tempahan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── WhatsApp Notice Modal (after booking confirmed) ── */}
       {showWaNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-[32px] w-full max-w-sm p-6 shadow-2xl animate-fade-in text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600"/>
+            {/* Icon */}
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="w-8 h-8 text-emerald-600"/>
             </div>
-            <h3 className="font-bold text-xl text-gray-900 mb-2">Tempahan Direkodkan!</h3>
-            <p className="text-sm text-gray-500 mb-1">No. Tempahan: <strong className="text-gray-900">{bookings.find(b=>b.id===lastBookingId)?.invoice_id || lastBookingId}</strong></p>
-            <div className="bg-amber-50 border border-amber-100 rounded-[16px] p-4 my-4 text-left">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600"/>
-                <div>
-                  <p className="text-xs font-bold text-amber-800">Notifikasi telah dihantar ke WhatsApp host.</p>
-                  <p className="text-xs font-bold text-amber-800 mt-1">Sila bayar deposit dalam <strong>6 jam</strong> atau tempahan akan dibatalkan secara automatik.</p>
+            <h3 className="font-black text-xl text-gray-900 mb-1">Tempahan Direkodkan!</h3>
+            <p className="text-sm text-gray-500 mb-4">No. Tempahan: <strong className="text-gray-900">{bookings.find(b=>b.id===lastBookingId)?.invoice_id || lastBookingId}</strong></p>
+
+            {/* Tips bubbles */}
+            <div className="space-y-2 mb-5 text-left">
+              {[
+                { icon:'💬', color:'bg-green-50 border-green-100 text-green-800', text:'Notifikasi WhatsApp telah dihantar ke admin.' },
+                { icon:'💳', color:'bg-amber-50 border-amber-100 text-amber-800', text:'Bayar deposit dalam 6 jam atau tempahan akan dibatalkan.' },
+                { icon:'📤', color:'bg-blue-50 border-blue-100 text-blue-800',   text:'Upload resit selepas bayar — tekan "Semak Status Tempahan".' },
+              ].map(({icon,color,text})=>(
+                <div key={text} className={`flex items-start gap-2.5 border rounded-[12px] px-3 py-2.5 ${color}`}>
+                  <span className="text-base shrink-0">{icon}</span>
+                  <p className="text-xs font-semibold leading-snug">{text}</p>
                 </div>
-              </div>
+              ))}
             </div>
-            {(() => {
-              const bk = bookings.find(b=>b.id===lastBookingId);
-              if (!bk) return null;
-              const msg = `*Tempahan ${homepage.homestay_name}*\n\nNama: ${bk.guest_name}\nNo. Tel: ${bk.guest_phone}\nTempahan: ${bk.id}\nIn: ${formatDate(bk.check_in)}\nOut: ${formatDate(bk.check_out)}\nMalam: ${bk.total_nights}\nTetamu: ${bk.guests}\nJumlah: RM ${bk.total_price.toFixed(0)}\nDeposit: RM ${pricing.deposit.toFixed(0)}\n\n_Sila sahkan tempahan dan hantar butiran pembayaran deposit._`;
-              const semakMsg = `Saya ingin semak status tempahan saya.\n\nNo. Tempahan: *${bk.invoice_id}*\nNama: ${bk.guest_name}`;
-              return (
-                <div className="space-y-2 mb-3">
-                  <a href={`https://wa.me/${homepage.whatsapp_number}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer"
-                    className="block w-full py-3 bg-green-50 hover:bg-green-100 text-green-700 font-bold text-sm rounded-[14px] transition-colors text-center">
-                    📲 Hantar Semula ke Admin
-                  </a>
-                  <a href={`https://wa.me/${homepage.whatsapp_number}?text=${encodeURIComponent(semakMsg)}`} target="_blank" rel="noreferrer"
-                    className="block w-full py-3 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-sm rounded-[14px] transition-colors text-center">
-                    🔍 Semak Status via WhatsApp
-                  </a>
-                </div>
-              );
-            })()}
-            <button onClick={()=>{ setShowWaNotice(false); setShowStatusModal(true); }} className="w-full mb-2 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-[16px] transition-colors text-sm">
-              Semak Status Tempahan Saya
+
+            <button onClick={()=>setShowWaNotice(false)} className="w-full bg-gray-900 text-white font-bold py-4 rounded-[16px] hover:bg-black transition-colors">
+              Saya Faham
             </button>
-            <button onClick={()=>setShowWaNotice(false)} className="w-full bg-gray-900 text-white font-bold py-4 rounded-[16px] hover:bg-black transition-colors">Saya Faham</button>
+            <button onClick={()=>{ setShowWaNotice(false); setShowStatusModal(true); }}
+              className="w-full mt-2 py-2.5 text-xs font-bold text-gray-400 hover:text-gray-700 transition-colors">
+              Semak Status Tempahan →
+            </button>
           </div>
         </div>
       )}
@@ -2492,7 +2536,10 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
               </div>
 
               {formReady && (
-                <p className="hidden md:block text-center text-[11px] text-gray-400 italic mb-2">Semua maklumat telah lengkap. Tekan butang di bawah untuk hantar tempahan.</p>
+                <div className="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-[10px] px-3 py-2 mb-2">
+                  <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0"/>
+                  <p className="text-[11px] text-emerald-700 font-semibold">Semua maklumat telah lengkap. Tekan butang di bawah untuk semak & hantar tempahan.</p>
+                </div>
               )}
               <button type="submit" className={`hidden md:flex w-full font-bold py-4 rounded-[12px] justify-center items-center transition-all text-lg tracking-widest uppercase ${formReady ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200' : 'bg-gray-900 hover:bg-black text-white shadow-md'}`}>
                 TEMPAH SEKARANG
