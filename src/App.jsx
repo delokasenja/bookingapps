@@ -243,7 +243,7 @@ const reducer = (state, action) => {
     case 'UPDATE_BOOK': return {...state, bookings: state.bookings.map(b=>b.id===action.id ? {...b, status:action.val} : b)};
     case 'DEL_BOOK': return {...state, bookings: state.bookings.filter(b=>b.id !== action.id)};
     case 'UPDATE_BOOK_DETAIL': return {...state, bookings: state.bookings.map(b=>b.id===action.id ? {...b, ...action.payload} : b)};
-    case 'UPDATE_CUSTOMER_DETAIL': return {...state, bookings: state.bookings.map(b=>b.id===action.id ? {...b, guest_ic: action.ic, agreed_terms: action.agreed} : b)};
+    case 'UPDATE_CUSTOMER_DETAIL': return {...state, bookings: state.bookings.map(b=>b.id===action.id ? {...b, guest_ic: action.ic, agreed_terms: action.agreed, ...(action.email!==undefined?{guest_email:action.email}:{})} : b)};
     case 'EXPIRE_HOLDS': return {...state, bookings: state.bookings.map(b=> b.status==='hold' && b.hold_until && new Date(b.hold_until)<new Date() ? {...b, status:'expired'} : b)};
     case 'UPDATE_PRICING': return {...state, pricing: action.payload};
     case 'UPDATE_HOMEPAGE': return {...state, homepage: action.payload};
@@ -622,6 +622,7 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
   const [pendingFileBaki, setPendingFileBaki] = useState(null);
   const [previewUrlBaki, setPreviewUrlBaki] = useState(null);
   const [fullViewImg, setFullViewImg] = useState(null); // lightbox for uploaded receipt
+  const [email, setEmail] = useState('');
 
   const doSearch = (raw) => {
     const q = (raw !== undefined ? raw : query).trim().toLowerCase();
@@ -636,7 +637,7 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
     );
     setResult(found||null);
     setNotFound(!found);
-    if (found) { setIc(found.guest_ic||''); setAgreed(found.agreed_terms||false); setSaved(false); setStep('result'); }
+    if (found) { setIc(found.guest_ic||''); setEmail(found.guest_email||''); setAgreed(found.agreed_terms||false); setSaved(false); setStep('result'); }
   };
 
   useEffect(() => {
@@ -959,11 +960,11 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
                     </div>
                     {/* Preview */}
                     {(previewUrl || result.receipt_url) ? (
-                      <div className="rounded-[12px] overflow-hidden border border-blue-100 bg-gray-50 aspect-[4/3] cursor-pointer" onClick={()=>setFullViewImg(previewUrl||result.receipt_url)}>
+                      <div className="rounded-[12px] overflow-hidden border border-blue-100 bg-gray-50 aspect-[4/3] max-h-[90px] cursor-pointer" onClick={()=>setFullViewImg(previewUrl||result.receipt_url)}>
                         <img src={previewUrl||result.receipt_url} alt="Resit Deposit" className="w-full h-full object-cover hover:opacity-90 transition-opacity"/>
                       </div>
                     ) : (
-                      <div className="rounded-[12px] border-2 border-dashed border-gray-200 bg-gray-50 aspect-[4/3] flex flex-col items-center justify-center gap-1 text-gray-300">
+                      <div className="rounded-[12px] border-2 border-dashed border-gray-200 bg-gray-50 aspect-[4/3] max-h-[90px] flex flex-col items-center justify-center gap-1 text-gray-300">
                         <ImageIcon className="w-6 h-6"/>
                         <span className="text-[9px] font-bold">Belum ada</span>
                       </div>
@@ -1023,7 +1024,7 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
                           <img src={previewUrlBaki||result.receipt_baki_url} alt="Resit Baki" className="w-full h-full object-cover hover:opacity-90 transition-opacity"/>
                         </div>
                       ) : (
-                        <div className="rounded-[12px] border-2 border-dashed border-gray-200 bg-gray-50 aspect-[4/3] flex flex-col items-center justify-center gap-1 text-gray-300">
+                        <div className="rounded-[12px] border-2 border-dashed border-gray-200 bg-gray-50 aspect-[4/3] max-h-[90px] flex flex-col items-center justify-center gap-1 text-gray-300">
                           <ImageIcon className="w-6 h-6"/>
                           <span className="text-[9px] font-bold">Belum ada</span>
                         </div>
@@ -1093,6 +1094,11 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
                 <p className="text-xs font-black text-gray-700 flex items-center gap-1.5"><IdCard className="w-3.5 h-3.5 text-emerald-500"/> Maklumat Sebelum Check-in</p>
                 <input type="text" placeholder="No. Kad Pengenalan (cth: 991231-08-1234)" value={ic} onChange={e=>setIc(e.target.value)}
                   className="w-full p-3 bg-gray-50 border border-gray-200 rounded-[12px] outline-none font-bold text-gray-900 focus:border-emerald-500 text-sm"/>
+                <div className="relative">
+                  <Send className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"/>
+                  <input type="email" placeholder="Alamat emel (untuk penerimaan notifikasi)" value={email} onChange={e=>setEmail(e.target.value)}
+                    className="w-full pl-9 p-3 bg-gray-50 border border-gray-200 rounded-[12px] outline-none text-gray-900 focus:border-emerald-500 text-sm"/>
+                </div>
                 <label className={`flex items-start gap-2.5 cursor-pointer p-3 rounded-[12px] transition-colors ${agreed?'bg-emerald-50 border border-emerald-100':'bg-gray-50 border border-gray-200'}`}>
                   <input type="checkbox" checked={agreed} onChange={e=>{ setAgreed(e.target.checked); setSaved(false); }} className="mt-0.5 w-4 h-4 accent-emerald-600 cursor-pointer shrink-0"/>
                   <span className={`text-[10px] font-medium leading-relaxed ${agreed?'text-emerald-800':'text-gray-600'}`}>
@@ -1105,7 +1111,7 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
                 <button
                   onClick={()=>{
                     if (!agreed) { setSaved('error'); return; }
-                    dispatch({type:'UPDATE_CUSTOMER_DETAIL',id:result.id,ic,agreed});
+                    dispatch({type:'UPDATE_CUSTOMER_DETAIL',id:result.id,ic,agreed,email});
                     setSaved(true);
                   }}
                   className="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-[12px] text-xs transition-colors flex items-center justify-center gap-2">
@@ -2987,7 +2993,8 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
       return matchStatus && matchSearch && matchMonth;
     });
 
-    const openModal = (b) => { setExpandedBooking(b); setEditPayment(b.payment_received||0); setEditNotes(b.admin_notes||''); setEditReceiptUrl(b.receipt_url||''); setEditReceiptBakiUrl(b.receipt_baki_url||''); };
+    const [editGuestEmail, setEditGuestEmail] = useState('');
+    const openModal = (b) => { setExpandedBooking(b); setEditPayment(b.payment_received||0); setEditNotes(b.admin_notes||''); setEditReceiptUrl(b.receipt_url||''); setEditReceiptBakiUrl(b.receipt_baki_url||''); setEditGuestEmail(b.guest_email||''); };
 
     const exportCSV = () => {
       const rows = [
@@ -3105,6 +3112,16 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
                     <p className="font-bold text-gray-900">{expandedBooking.guest_name}</p>
                     <p className="text-sm text-gray-600">{expandedBooking.guest_phone}</p>
                     {expandedBooking.guest_ic && <p className="text-xs text-blue-600 font-bold mt-1">IC: {expandedBooking.guest_ic}</p>}
+                    {expandedBooking.guest_email
+                      ? <p className="text-xs text-emerald-600 font-bold mt-1 flex items-center gap-1"><Send className="w-2.5 h-2.5"/>{expandedBooking.guest_email}</p>
+                      : <div className="mt-2">
+                          <input type="email" value={editGuestEmail} onChange={e=>setEditGuestEmail(e.target.value)}
+                            placeholder="Tambah emel pelanggan"
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-[8px] text-xs outline-none focus:border-emerald-400"/>
+                          {editGuestEmail && <button onClick={()=>{ dispatch({type:'UPDATE_BOOK_DETAIL',id:expandedBooking.id,payload:{guest_email:editGuestEmail}}); setExpandedBooking({...expandedBooking,guest_email:editGuestEmail}); }}
+                            className="mt-1 w-full py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-[8px]">Simpan Emel</button>}
+                        </div>
+                    }
                   </div>
                   <div className="bg-gray-50 p-4 rounded-[16px] border border-gray-100">
                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Tarikh & Tetamu</p>
@@ -3776,7 +3793,11 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
         }, { publicKey: ej.public_key });
         setTestMsg({ type: 'ok', text: `✓ Emel ujian ${type === 'admin' ? 'admin' : 'customer'} berjaya dihantar ke ${toEmail}` });
       } catch (err) {
-        setTestMsg({ type: 'err', text: `Gagal: ${err?.text || err?.message || 'Ralat tidak diketahui'}` });
+        const errText = err?.text || err?.message || 'Ralat tidak diketahui';
+        const isRecipient = errText.toLowerCase().includes('recipient') || errText.toLowerCase().includes('address');
+        setTestMsg({ type: 'err', text: isRecipient
+          ? `Gagal: "${errText}" — Dalam EmailJS template → tab Settings → field "To Email" mesti diisi dengan {{to_email}}`
+          : `Gagal: ${errText}` });
       } finally { setTesting(null); }
     };
 
@@ -3805,6 +3826,12 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
             <li>Cipta 2 <strong>Email Template</strong>: satu untuk admin, satu untuk customer → salin <strong>Template ID</strong></li>
             <li>Pergi ke <strong>Account → API Keys</strong> → salin <strong>Public Key</strong></li>
           </ol>
+          <div className="mt-3 bg-red-50 border border-red-200 rounded-[10px] px-3 py-2.5 flex items-start gap-2">
+            <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5"/>
+            <p className="text-xs text-red-700 font-semibold">
+              <strong>Wajib:</strong> Dalam setiap template EmailJS → tab <strong>"Settings"</strong> → field <strong>"To Email"</strong> → isi dengan <code className="bg-red-100 px-1 rounded font-mono">{'{{to_email}}'}</code>. Tanpa ini emel tidak akan berjaya dihantar.
+            </p>
+          </div>
           <a href="https://www.emailjs.com/docs/" target="_blank" rel="noreferrer"
             className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-white border border-amber-200 px-3 py-1.5 rounded-full hover:bg-amber-100 transition-colors">
             <ChevronRight className="w-3 h-3"/> Dokumentasi EmailJS
