@@ -4629,12 +4629,21 @@ export default function DelokaSenjaApp() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [ready, setReady] = useState(false);
   const saveTimer = useRef(null);
+  // isSynced: only true after Firestore read SUCCEEDS — prevents overwriting real data
+  // with INITIAL_STATE defaults if network fails on app load
+  const isSynced = useRef(false);
 
   // Load state once from Firestore on mount
   useEffect(() => {
     getDoc(STATE_DOC)
-      .then(snap => { if (snap.exists()) dispatch({ type: 'HYDRATE', payload: snap.data() }); })
-      .catch(() => {})
+      .then(snap => {
+        if (snap.exists()) dispatch({ type: 'HYDRATE', payload: snap.data() });
+        isSynced.current = true; // ✅ Read succeeded — saves are now safe
+      })
+      .catch(() => {
+        // Firestore read failed — isSynced stays false
+        // This BLOCKS the save effects below from overwriting real data with INITIAL_STATE
+      })
       .finally(() => {
         setReady(true);
         const loader = document.getElementById('app-loader');
@@ -4646,8 +4655,9 @@ export default function DelokaSenjaApp() {
   }, []);
 
   // Save state to Firestore (debounced 800ms) after initial load
+  // GUARD: isSynced must be true — prevents wiping Firestore if load failed
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !isSynced.current) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       setDoc(STATE_DOC, state).catch(() => {});
@@ -4656,7 +4666,7 @@ export default function DelokaSenjaApp() {
 
   // Immediate save when admins or cleaners change (so login on other devices detects new accounts fast)
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !isSynced.current) return;
     setDoc(STATE_DOC, state).catch(() => {});
   }, [state.admins, state.cleaners, ready]); // eslint-disable-line
 
