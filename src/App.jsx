@@ -4693,20 +4693,28 @@ export default function DelokaSenjaApp() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [ready, setReady] = useState(false);
   const saveTimer = useRef(null);
-  // isSynced: only true after Firestore read SUCCEEDS — prevents overwriting real data
-  // with INITIAL_STATE defaults if network fails on app load
+  // isSynced: true after Firestore read succeeds OR after user makes real changes
   const isSynced = useRef(false);
+
+  // Detect whether state has real user data vs pure INITIAL_STATE
+  // Used to allow saves when user makes changes even if initial Firestore load failed
+  const hasRealData = (s) =>
+    s.bookings.length > 0 ||
+    (s.homepage?.bank_account || '') !== '' ||
+    (s.homepage?.logo_url || '') !== '' ||
+    (s.emailjs_config?.service_id || '') !== '' ||
+    s.gallery.some(url => !url.includes('unsplash.com'));
 
   // Load state once from Firestore on mount
   useEffect(() => {
     getDoc(STATE_DOC)
       .then(snap => {
         if (snap.exists()) dispatch({ type: 'HYDRATE', payload: snap.data() });
-        isSynced.current = true; // ✅ Read succeeded — saves are now safe
+        isSynced.current = true; // ✅ Read succeeded — saves always safe
       })
       .catch(() => {
-        // Firestore read failed — isSynced stays false
-        // This BLOCKS the save effects below from overwriting real data with INITIAL_STATE
+        // Firestore read failed — isSynced stays false until user makes real changes
+        // hasRealData() check below will unblock saves once user acts
       })
       .finally(() => {
         setReady(true);
@@ -4719,18 +4727,22 @@ export default function DelokaSenjaApp() {
   }, []);
 
   // Save state to Firestore (debounced 800ms) after initial load
-  // GUARD: isSynced must be true — prevents wiping Firestore if load failed
+  // GUARD: only save if synced OR state has real user data (prevents INITIAL_STATE overwrite)
   useEffect(() => {
-    if (!ready || !isSynced.current) return;
+    if (!ready) return;
+    if (!isSynced.current && !hasRealData(state)) return;
+    if (hasRealData(state)) isSynced.current = true; // promote once real data is present
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       setDoc(STATE_DOC, state).catch(() => {});
     }, 800);
   }, [state, ready]);
 
-  // Immediate save when admins or cleaners change (so login on other devices detects new accounts fast)
+  // Immediate save when admins or cleaners change
   useEffect(() => {
-    if (!ready || !isSynced.current) return;
+    if (!ready) return;
+    if (!isSynced.current && !hasRealData(state)) return;
+    if (hasRealData(state)) isSynced.current = true;
     setDoc(STATE_DOC, state).catch(() => {});
   }, [state.admins, state.cleaners, ready]); // eslint-disable-line
 
