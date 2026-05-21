@@ -2739,6 +2739,10 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [toast, setToast] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const SETTINGS_IDS = ['special','pricing','gallery','homepage','templates','email','users'];
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Auto-expand settings group when a settings tab becomes active
+  useEffect(() => { if (SETTINGS_IDS.includes(activeTab)) setSettingsOpen(true); }, [activeTab]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadCleanerCount, setUnreadCleanerCount] = useState(0);
   const [newBookingNotif, setNewBookingNotif] = useState(null);
@@ -4465,18 +4469,24 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
     );
   };
 
-  const tabs = [
-    {id:'dashboard',icon:LayoutDashboard,label:'Dashboard'},
-    {id:'bookings',icon:BookOpen,label:'Tempahan'},
-    {id:'special',icon:CalendarIcon,label:'Tarikh Khas'},
-    {id:'pricing',icon:CreditCard,label:'Harga'},
-    {id:'gallery',icon:ImageIcon,label:'Galeri'},
-    {id:'homepage',icon:Home,label:'Laman Utama'},
-    {id:'templates',icon:MessageSquare,label:'Templat WA'},
-    {id:'email',icon:Send,label:'Notifikasi Emel'},
-    {id:'users',icon:Shield,label:'Admin'},
-    {id:'cleaner',icon:Sparkles,label:'Cleaner'},
+  // Primary tabs — always visible, prominent
+  const primaryTabs = [
+    {id:'dashboard', icon:LayoutDashboard, label:'Dashboard'},
+    {id:'bookings',  icon:BookOpen,        label:'Tempahan'},
+    {id:'cleaner',   icon:Sparkles,        label:'Cleaner'},
   ];
+  // Settings sub-tabs — grouped under ⚙️ Tetapan
+  const settingsTabs = [
+    {id:'special',   icon:CalendarIcon,   label:'Tarikh Khas'},
+    {id:'pricing',   icon:CreditCard,     label:'Harga'},
+    {id:'gallery',   icon:ImageIcon,      label:'Galeri'},
+    {id:'homepage',  icon:Home,           label:'Laman Utama'},
+    {id:'templates', icon:MessageSquare,  label:'Templat WA'},
+    {id:'email',     icon:Send,           label:'Notifikasi Emel'},
+    {id:'users',     icon:Shield,         label:'Admin'},
+  ];
+  // Combined for mobile sheet + mobile header lookup
+  const tabs = [...primaryTabs, ...settingsTabs];
 
   const renderTab = () => {
     switch(activeTab) {
@@ -4501,14 +4511,42 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
           <h1 className="text-lg font-bold text-emerald-600 flex items-center gap-2"><Settings className="w-5 h-5"/> Admin Panel</h1>
           <button onClick={toggleDark} className="text-gray-400 hover:text-gray-900">{isDark?<Sun className="w-4 h-4"/>:<Moon className="w-4 h-4"/>}</button>
         </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-5 space-y-1.5 pb-24">
-          {tabs.map(t=>(
-            <button key={t.id} onClick={()=>{ setActiveTab(t.id); if(t.id==='bookings') setUnreadCount(0); if(t.id==='cleaner') setUnreadCleanerCount(0); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-[14px] font-bold text-xs transition-colors ${activeTab===t.id?'bg-gray-900 text-white shadow-md':'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
-              <t.icon className="w-5 h-5"/> <span className="flex-1 text-left">{t.label}</span>
+        <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-5 pb-24 space-y-1">
+
+          {/* ── Primary Tabs ── */}
+          {primaryTabs.map(t=>(
+            <button key={t.id} onClick={()=>{ setActiveTab(t.id); if(t.id==='bookings') setUnreadCount(0); if(t.id==='cleaner') setUnreadCleanerCount(0); }}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-[14px] font-bold text-xs transition-colors ${activeTab===t.id?'bg-gray-900 text-white shadow-md':'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
+              <t.icon className="w-5 h-5"/>
+              <span className="flex-1 text-left">{t.label}</span>
               {t.id==='bookings' && unreadCount>0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount}</span>}
               {t.id==='cleaner' && unreadCleanerCount>0 && <span className="w-5 h-5 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCleanerCount}</span>}
             </button>
           ))}
+
+          {/* ── Divider ── */}
+          <div className="my-3 border-t border-gray-100"/>
+
+          {/* ── Settings Group ── */}
+          <button
+            onClick={()=>setSettingsOpen(o=>!o)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-[14px] font-bold text-xs transition-colors ${SETTINGS_IDS.includes(activeTab)?'text-gray-900 bg-gray-50':'text-gray-400 hover:bg-gray-50 hover:text-gray-700'}`}>
+            <Settings className="w-4 h-4 shrink-0"/>
+            <span className="flex-1 text-left text-[11px] uppercase tracking-wider">Tetapan</span>
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${settingsOpen?'rotate-180':''}`}/>
+          </button>
+
+          {settingsOpen && (
+            <div className="ml-2 space-y-0.5 border-l-2 border-gray-100 pl-3">
+              {settingsTabs.map(t=>(
+                <button key={t.id} onClick={()=>setActiveTab(t.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[12px] font-bold text-xs transition-colors ${activeTab===t.id?'bg-gray-900 text-white shadow-sm':'text-gray-500 hover:bg-gray-50 hover:text-gray-800'}`}>
+                  <t.icon className="w-4 h-4 shrink-0"/>
+                  <span className="flex-1 text-left">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="p-4 border-t border-gray-50 bg-white absolute bottom-0 w-full space-y-2">
           <button onClick={()=>setRoute('customer')} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[14px] font-bold text-xs bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"><Home className="w-4 h-4"/> Ke Laman Utama</button>
@@ -4543,15 +4581,29 @@ const AdminView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
         <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={()=>setMobileMenuOpen(false)}>
           <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"/>
           <div className="relative bg-white rounded-t-[32px] p-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-6"/>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4 px-1">Menu Admin</p>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {tabs.map(t=>(
-                <button key={t.id} onClick={()=>{ setActiveTab(t.id); setMobileMenuOpen(false); if(t.id==='bookings') setUnreadCount(0); if(t.id==='cleaner') setUnreadCleanerCount(0); }} className={`flex items-center gap-3 p-4 rounded-[18px] font-bold text-sm transition-colors text-left relative ${activeTab===t.id?'bg-gray-900 text-white':'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
-                  <t.icon className="w-5 h-5 shrink-0"/>
-                  <span className="text-xs leading-tight">{t.label}</span>
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"/>
+
+            {/* Primary tabs — big 3 */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {primaryTabs.map(t=>(
+                <button key={t.id} onClick={()=>{ setActiveTab(t.id); setMobileMenuOpen(false); if(t.id==='bookings') setUnreadCount(0); if(t.id==='cleaner') setUnreadCleanerCount(0); }}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-[18px] font-bold transition-colors relative ${activeTab===t.id?'bg-gray-900 text-white':'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
+                  <t.icon className="w-6 h-6 shrink-0"/>
+                  <span className="text-[11px] leading-tight text-center">{t.label}</span>
                   {t.id==='bookings' && unreadCount>0 && <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount}</span>}
                   {t.id==='cleaner' && unreadCleanerCount>0 && <span className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCleanerCount}</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Settings sub-tabs */}
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1 flex items-center gap-1.5"><Settings className="w-3 h-3"/> Tetapan</p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {settingsTabs.map(t=>(
+                <button key={t.id} onClick={()=>{ setActiveTab(t.id); setMobileMenuOpen(false); }}
+                  className={`flex items-center gap-2.5 p-3 rounded-[14px] font-bold text-xs transition-colors text-left ${activeTab===t.id?'bg-gray-900 text-white':'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
+                  <t.icon className="w-4 h-4 shrink-0"/>
+                  <span className="text-xs leading-tight">{t.label}</span>
                 </button>
               ))}
             </div>
