@@ -239,7 +239,11 @@ const reducer = (state, action) => {
       wa_templates:   { ...INITIAL_STATE.wa_templates,   ...(action.payload.wa_templates   || {}) },
       emailjs_config: { ...INITIAL_STATE.emailjs_config, ...(action.payload.emailjs_config || {}) },
     };
-    case 'ADD_BOOKING': return {...state, bookings: [...state.bookings, action.payload]};
+    case 'ADD_BOOKING': {
+      // Guard: prevent duplicate if Firestore snapshot + local dispatch fire for same booking
+      if (state.bookings.some(b => b.id === action.payload.id)) return state;
+      return {...state, bookings: [...state.bookings, action.payload]};
+    }
     case 'UPDATE_BOOK': return {...state, bookings: state.bookings.map(b=>b.id===action.id ? {...b, status:action.val} : b)};
     case 'DEL_BOOK': return {...state, bookings: state.bookings.filter(b=>b.id !== action.id)};
     case 'UPDATE_BOOK_DETAIL': return {...state, bookings: state.bookings.map(b=>b.id===action.id ? {...b, ...action.payload} : b)};
@@ -284,7 +288,7 @@ const reducer = (state, action) => {
 };
 
 // ================= UTILS =================
-const formatCurrency = (amount) => `RM ${parseFloat(amount).toFixed(2)}`;
+const formatCurrency = (amount) => `RM ${parseFloat(amount||0).toFixed(2)}`;
 const formatDate = (dateString) => {
   if (!dateString) return '';
   const d = new Date(dateString + (dateString.length === 10 ? 'T00:00:00' : ''));
@@ -604,7 +608,7 @@ const PaymentInfoCard = ({ homepage, label, amount, headerColor = 'bg-blue-600',
 };
 
 // ================= BOOKING STATUS MODAL =================
-const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuery = '' }) => {
+const BookingStatusModal = ({ bookings, dispatch, homepage, pricing, onClose, initialQuery = '' }) => {
   const [step, setStep] = useState('login');
   const [query, setQuery] = useState(initialQuery);
   const [result, setResult] = useState(null);
@@ -913,7 +917,7 @@ const BookingStatusModal = ({ bookings, dispatch, homepage, onClose, initialQuer
               <PaymentInfoCard
                 homepage={homepage}
                 label="Bayaran Deposit"
-                amount={`RM ${result.total_price ? (result.total_price * 0.2).toFixed(0) : '—'}`}
+                amount={formatCurrency(result.deposit || pricing?.deposit || 0)}
                 headerColor="bg-blue-600"
                 tip="Bayar dalam 6 jam • Upload resit di bawah selepas bayar"
               />
@@ -1466,7 +1470,7 @@ const CleanerView = ({ state, dispatch, setRoute, cleanerUser, setCleanerUser })
 
   const initSections = () => (cleaner_sections||[]).map(s=>({
     ...s,
-    tasks: (s.tasks||[]).map(t=>({...t, done:false})),
+    tasks: (s.tasks||[]).map(t=>({...t, done:false, taskPhotos:[]})), // taskPhotos must be [] or spread will crash
     notes: '',
     sectionPhotos: [],
     expanded: false,
@@ -2079,6 +2083,8 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
     if (!checkIn||!checkOut||!guestName||!guestPhone) return setToast({type:'error',message:'Sila lengkapkan borang.'});
     if (checkIn >= checkOut) return setToast({type:'error',message:'Tarikh keluar mesti selepas tarikh masuk.'});
     if (!priceCalc) return setToast({type:'error',message:'Ralat pengiraan harga. Sila pilih tarikh semula.'});
+    const maxG = pricing.max_guests||10;
+    if (guests > maxG) return setToast({type:'error',message:`Maksimum ${maxG} tetamu sahaja.`});
     if (checkOverlap(checkIn,checkOut,bookings,special_dates)) return setToast({type:'error',message:'Tarikh telah ditempah atau ditutup.'});
     setPendingBooking({ checkIn, checkOut, guestName, guestPhone, guestEmail, guests, priceCalc });
   };
@@ -2087,6 +2093,12 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
   const handleConfirmBooking = () => {
     if (!pendingBooking) return;
     const { checkIn:ci, checkOut:co, guestName:gn, guestPhone:gp, guestEmail:ge, guests:g, priceCalc:pc } = pendingBooking;
+    // Re-check overlap in case someone else booked between summary and confirm
+    if (checkOverlap(ci, co, bookings, special_dates)) {
+      setPendingBooking(null);
+      setToast({type:'error',message:'Maaf, tarikh ini baru sahaja ditempah. Sila pilih tarikh lain.'});
+      return;
+    }
     const bkNum = Math.floor(Math.random()*90000)+10000;
     const bkId = `BK${bkNum}`;
     const holdUntil = new Date(Date.now()+6*3600000).toISOString();
@@ -2095,7 +2107,7 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
       guest_name: gn, guest_phone: gp, guest_email: ge, guest_ic: '',
       check_in: ci, check_out: co,
       guests: Number(g), total_nights: pc.totalNights,
-      total_price: pc.grandTotal, payment_received: 0,
+      total_price: pc.grandTotal, deposit: pc.deposit, payment_received: 0,
       admin_notes: '', status: 'hold',
       hold_until: holdUntil, agreed_terms: false,
       created_at: new Date().toISOString()
@@ -2132,7 +2144,7 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
 
   return (
     <div className="min-h-screen pb-40 md:pb-8" id="home">
-      {showStatusModal && <BookingStatusModal bookings={bookings} dispatch={dispatch} homepage={homepage} onClose={()=>{setShowStatusModal(false);setHistoryInitialId('');}} initialQuery={historyInitialId}/>}
+      {showStatusModal && <BookingStatusModal bookings={bookings} dispatch={dispatch} homepage={homepage} pricing={pricing} onClose={()=>{setShowStatusModal(false);setHistoryInitialId('');}} initialQuery={historyInitialId}/>}
       {showHistoryModal && <BookingHistoryModal bookings={bookings} homepage={homepage} onClose={()=>setShowHistoryModal(false)} onViewBooking={(id)=>{ setShowHistoryModal(false); setHistoryInitialId(id); setShowStatusModal(true); }}/>}
       {showRules && <RulesModal rules={rules} onClose={()=>setShowRules(false)}/>}
 
@@ -2515,7 +2527,7 @@ const CustomerView = ({ state, dispatch, setRoute, isDark, toggleDark }) => {
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={()=>setGuests(g=>Math.max(1,g-1))} className="w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-600 hover:border-emerald-500 hover:text-emerald-600 font-bold text-lg transition-colors">−</button>
                     <span className="w-5 text-center font-bold text-gray-900">{guests}</span>
-                    <button type="button" onClick={()=>setGuests(g=>Math.min(15,g+1))} className="w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-600 hover:border-emerald-500 hover:text-emerald-600 font-bold text-lg transition-colors">+</button>
+                    <button type="button" onClick={()=>setGuests(g=>Math.min(pricing.max_guests||10,g+1))} className="w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-600 hover:border-emerald-500 hover:text-emerald-600 font-bold text-lg transition-colors">+</button>
                   </div>
                 </div>
               </div>
